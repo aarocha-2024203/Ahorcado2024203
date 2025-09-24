@@ -1,0 +1,77 @@
+package com.aarocha.hangman.service;
+
+import com.aarocha.hangman.controller.ValidacionCorreo;
+import com.aarocha.hangman.model.Usuarios;
+import com.aarocha.hangman.repository.UsuariosRepository;
+import org.apache.catalina.User;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class UsuariosServiceImpl implements UsuariosService{
+
+    private final UsuariosRepository usuariosRepository;
+
+    public UsuariosServiceImpl(UsuariosRepository usuariosRepository) {
+        this.usuariosRepository = usuariosRepository;
+    }
+
+    @Override
+    public List<Usuarios> getAllUsuarios() {
+        return usuariosRepository.findAll();
+    }
+
+    @Override
+    public Usuarios getUsuariosById(Integer id) {
+        return usuariosRepository.findById(id).orElse(null);
+    }
+
+    @Override
+    public Usuarios saveUsuarios(Usuarios usuarios) {
+        //Contraseña Vacia
+        ValidacionCorreo.validarCorreo(usuarios.getCorreoUsuario());
+        if (usuarios.getContraseñaUsuario() == null || usuarios.getContraseñaUsuario().trim().isEmpty()){
+            usuarios.setContraseñaUsuario("Mensaje-ContraseñaVacia");
+            return usuarios;
+        }
+
+        List<Usuarios> lista = usuariosRepository.findAll();
+        for (Usuarios u : lista) {
+            if (u.getCorreoUsuario().equalsIgnoreCase(usuarios.getCorreoUsuario())) {
+                usuarios.setCorreoUsuario("Mensaje-Correo");
+                return usuarios;
+            }
+        }
+        return usuariosRepository.save(usuarios);
+    }
+
+    @Override
+    public Usuarios updateUsuarios(Integer id, Usuarios usuarios) {
+        ValidacionCorreo.validarCorreo(usuarios.getCorreoUsuario());
+        if (usuarios.getContraseñaUsuario() == null || usuarios.getContraseñaUsuario().trim().isEmpty()){
+            usuarios.setContraseñaUsuario("Mensaje-ContraseñaVacia");
+            return usuarios;
+        }
+        Usuarios existinUsuario = usuariosRepository.findById(id).orElse(null);
+        if (existinUsuario != null) {
+            List<Usuarios> lista = usuariosRepository.findAll();
+            for (Usuarios u : lista) {
+                if (!u.getId().equals(id)) {
+                    if (u.getCorreoUsuario().equalsIgnoreCase(usuarios.getCorreoUsuario())) {
+                        usuarios.setCorreoUsuario("Mensaje-Correo");
+                        return usuarios;
+                    }
+                }
+            }
+            existinUsuario.setCorreoUsuario(usuarios.getCorreoUsuario());
+            return usuariosRepository.save(existinUsuario);
+        }
+        return null;
+    }
+
+    @Override
+    public void deleteUsuarios(Integer id) {
+        usuariosRepository.deleteById(id);
+    }
+}
