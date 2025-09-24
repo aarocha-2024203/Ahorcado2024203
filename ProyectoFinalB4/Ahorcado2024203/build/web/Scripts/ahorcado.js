@@ -1,161 +1,227 @@
-// Arocha
-const palabras = ["HUMBERTO", "PAPAGAYO", "JAVASCRIPT", "PROGRAMAR", "AHORCADO"];
-const pistas = {
-  "HUMBERTO": [
-    "Es un profesor",
-    "Tiene 36 años",
-    "Tiene un hijo"
-  ],
-  "PAPAGAYO": [
-    "Es un ave",
-    "Muy colorida",
-    "Puede hablar"
-  ],
-  "JAVASCRIPT": [
-    "Lenguaje de programación",
-    "Se usa en la web",
-    "Funciona en navegadores"
-  ],
-  "PROGRAMAR": [
-    "Escribir código",
-    "Crear software",
-    "Resolver problemas"
-  ],
-  "AHORCADO": [
-    "Juego clásico",
-    "Usa letras",
-    "Pierdes con 6 fallos"
-  ]
-};
+document.addEventListener('DOMContentLoaded', () => {
+    const wordDisplay = document.getElementById('word');
+    const hintDisplay = document.getElementById('hint');
+    const gallowsImage = document.getElementById('gallows');
+    const messageDisplay = document.getElementById('message');
+    const timerDisplay = document.getElementById('timer');
+    const keyboard = document.getElementById('keyboard');
+    const startButton = document.getElementById('start');
+    const pauseButton = document.getElementById('pause');
+    const restartButton = document.getElementById('restart');
+    const showHintButton = document.getElementById('showHint');
 
-let palabra = "";
-let palabraOculta = [];
-let intentos = 0;
-const maxIntentos = 6;
+    let words = [];
+    let currentWord = '';
+    let currentHint = '';
+    let maskedWord = [];
+    let incorrectGuesses = 0;
+    const maxErrors = 6;
+    let timer = 60;
+    let timerInterval = null;
+    let gameActive = false;
+    let isPaused = false;
 
-let tiempo = 60;
-let temporizador = null;
-let pausado = false;
-let iniciado = false;
+    // Use contextPath from JSP
+    const contextPath = window.contextPath || '';
 
-// contador de pistas
-let pistaIndex = 0;
-
-function iniciarJuego() {
-  palabra = palabras[Math.floor(Math.random() * palabras.length)];
-  palabraOculta = Array(palabra.length).fill("_");
-  intentos = 0;
-  tiempo = 60;
-  clearInterval(temporizador);
-  iniciado = false;
-  pausado = false;
-  pistaIndex = 0;
-
-  document.getElementById("gallows").src = "Images/intento0.png";
-  document.getElementById("word").textContent = palabraOculta.join(" ");
-  document.getElementById("message").textContent = "";
-  document.getElementById("hint").textContent = "";
-  document.getElementById("timer").textContent = "Tiempo: 60s";
-  document.getElementById("pause").textContent = "Pausar";
-
-  // teclado deshabilitado hasta dar iniciar
-  document.querySelectorAll(".key").forEach(btn => {
-    btn.disabled = true;
-    btn.style.background = "#007BFF";
-    btn.onclick = () => manejarLetra(btn.textContent, btn);
-  });
-}
-
-function manejarLetra(letra, btn) {
-  if (!iniciado || pausado) return; // si no inició o está pausado no deja jugar
-
-  btn.disabled = true;
-  if (palabra.includes(letra)) {
-    for (let i = 0; i < palabra.length; i++) {
-      if (palabra[i] === letra) {
-        palabraOculta[i] = letra;
-      }
-    }
-    document.getElementById("word").textContent = palabraOculta.join(" ");
-    if (!palabraOculta.includes("_")) {
-      document.getElementById("message").textContent = "¡Ganaste! 🎉";
-      detenerJuego();
-    }
-  } else {
-    intentos++;
-    document.getElementById("gallows").src = "Images/intento" + intentos + ".png";
-    if (intentos >= maxIntentos) {
-      document.getElementById("message").textContent = "Perdiste 😢. La palabra era: " + palabra;
-      detenerJuego();
-    }
-  }
-}
-
-function deshabilitarTeclado() {
-  document.querySelectorAll(".key").forEach(btn => btn.disabled = true);
-}
-
-function habilitarTeclado() {
-  document.querySelectorAll(".key").forEach(btn => {
-    if (!btn.disabled) return;
-    if (palabraOculta.includes("_") && intentos < maxIntentos) {
-      btn.disabled = false;
-    }
-  });
-}
-
-function detenerJuego() {
-  clearInterval(temporizador);
-  temporizador = null;
-  deshabilitarTeclado();
-}
-
-// --- BOTONES ---
-document.getElementById("restart").addEventListener("click", () => {
-  iniciarJuego();
-});
-
-document.getElementById("start").addEventListener("click", () => {
-  if (!temporizador) {
-    iniciado = true;
-    pausado = false;
-    document.querySelectorAll(".key").forEach(btn => btn.disabled = false);
-
-    temporizador = setInterval(() => {
-      if (!pausado) {
-        tiempo--;
-        document.getElementById("timer").textContent = "Tiempo: " + tiempo + "s";
-        if (tiempo <= 0) {
-          document.getElementById("message").textContent = "⏰ Se acabó el tiempo. La palabra era: " + palabra;
-          detenerJuego();
+    async function fetchWords() {
+        try {
+            const response = await fetch('Controlador?menu=PalabrasJuego');
+            if (!response.ok) {
+                throw new Error('Failed to fetch words from the server.');
+            }
+            words = await response.json();
+            console.log('Palabras cargadas:', words); // Debug log to check data
+            if (words.length > 0) {
+                resetGame();
+            } else {
+                messageDisplay.textContent = 'No hay palabras disponibles para el juego.';
+            }
+        } catch (error) {
+            console.error('Error fetching words:', error);
+            messageDisplay.textContent = 'Error al cargar las palabras. Inténtalo de nuevo más tarde.';
         }
-      }
-    }, 1000);
-  }
+    }
+
+    function startGame() {
+        if (!gameActive && words.length > 0) {
+            gameActive = true;
+            isPaused = false;
+            messageDisplay.textContent = '';
+            updateGallowsImage(0);
+            keyboard.querySelectorAll('.key').forEach(button => {
+                button.disabled = false;
+            });
+
+            clearInterval(timerInterval);
+            timer = 60;
+            timerDisplay.textContent = `Tiempo: ${timer}s`;
+            timerInterval = setInterval(() => {
+                if (!isPaused && gameActive) {
+                    timer--;
+                    timerDisplay.textContent = `Tiempo: ${timer}s`;
+                    if (timer <= 0) {
+                        endGame(false);
+                    }
+                }
+            }, 1000);
+            startButton.disabled = true;
+        } else if (words.length === 0) {
+            messageDisplay.textContent = 'Cargando palabras, por favor espere...';
+            fetchWords();
+        }
+    }
+
+    function pauseGame() {
+        if (gameActive) {
+            if (!isPaused) {
+                // Pause
+                isPaused = true;
+                clearInterval(timerInterval);
+                keyboard.querySelectorAll('.key').forEach(button => {
+                    button.disabled = true;
+                });
+                messageDisplay.textContent = 'Juego pausado. Presiona Pausar para continuar.';
+                pauseButton.textContent = 'Continuar';
+            } else {
+                // Resume
+                isPaused = false;
+                timerInterval = setInterval(() => {
+                    if (!isPaused && gameActive) {
+                        timer--;
+                        timerDisplay.textContent = `Tiempo: ${timer}s`;
+                        if (timer <= 0) {
+                            endGame(false);
+                        }
+                    }
+                }, 1000);
+                // Re-enable only letters that haven't been guessed yet
+                keyboard.querySelectorAll('.key').forEach(button => {
+                    const letter = button.getAttribute('data-letter');
+                    if (letter && !maskedWord.includes(letter) && maskedWord.includes('_')) {
+                        button.disabled = false;
+                    }
+                });
+                messageDisplay.textContent = '';
+                pauseButton.textContent = 'Pausar';
+            }
+        }
+    }
+
+    function resetGame() {
+        if (words.length > 0) {
+            const randomIndex = Math.floor(Math.random() * words.length);
+            currentWord = words[randomIndex].palabra.toUpperCase();
+            currentHint = words[randomIndex].pista;
+            maskedWord = Array(currentWord.length).fill('_');
+            wordDisplay.textContent = maskedWord.join(' ');
+            hintDisplay.textContent = '';
+            incorrectGuesses = 0;
+            updateGallowsImage(0);
+            messageDisplay.textContent = '¡Adivina la palabra!';
+            keyboard.querySelectorAll('.key').forEach(button => {
+                button.disabled = false;
+            });
+            clearInterval(timerInterval);
+            timer = 60;
+            timerDisplay.textContent = `Tiempo: ${timer}s`;
+            gameActive = false;
+            isPaused = false;
+            startButton.disabled = false;
+            pauseButton.textContent = 'Pausar';
+        }
+    }
+
+    function updateGallowsImage(attempts) {
+        const imgSrc = `${contextPath}/Images/intento${attempts}.png`;
+        gallowsImage.src = imgSrc;
+        gallowsImage.onerror = () => {
+            console.error('Image failed to load:', imgSrc);
+            gallowsImage.src = `${contextPath}/Images/fondo.png`; // Fallback
+        };
+    }
+
+    function handleGuess(letter) {
+        if (!gameActive || isPaused) return;
+
+        const letterButton = document.querySelector(`.key[data-letter="${letter}"]`);
+        if (letterButton) {
+            letterButton.disabled = true;
+        }
+
+        if (currentWord.includes(letter)) {
+            let updated = false;
+            for (let i = 0; i < currentWord.length; i++) {
+                if (currentWord[i] === letter) {
+                    maskedWord[i] = letter;
+                    updated = true;
+                }
+            }
+            if (updated) {
+                wordDisplay.textContent = maskedWord.join(' ');
+                if (!maskedWord.includes('_')) {
+                    endGame(true);
+                }
+            }
+        } else {
+            incorrectGuesses++;
+            updateGallowsImage(incorrectGuesses);
+            if (incorrectGuesses >= maxErrors) {
+                endGame(false);
+            }
+        }
+    }
+
+    function endGame(win) {
+        gameActive = false;
+        isPaused = false;
+        clearInterval(timerInterval);
+        if (win) {
+            messageDisplay.textContent = '¡Felicidades, ganaste!';
+            messageDisplay.style.color = '#2ecc71';
+        } else {
+            messageDisplay.textContent = `¡Perdiste! La palabra era: ${currentWord}`;
+            messageDisplay.style.color = '#e74c3c';
+        }
+        keyboard.querySelectorAll('.key').forEach(button => {
+            button.disabled = true;
+        });
+        startButton.disabled = false;
+        pauseButton.textContent = 'Pausar';
+    }
+
+    // Event Listeners
+    startButton.addEventListener('click', startGame);
+    pauseButton.addEventListener('click', pauseGame);
+    restartButton.addEventListener('click', resetGame);
+    showHintButton.addEventListener('click', () => {
+        if (currentHint && (gameActive || !isPaused)) {
+            hintDisplay.textContent = `Pista: ${currentHint}`;
+        }
+    });
+
+    // Generate keyboard dynamically
+    function createKeyboard() {
+        const rows = ['QWERTYUIOP', 'ASDFGHJKLÑ', 'ZXCVBNM'];
+        keyboard.innerHTML = '';
+        rows.forEach(row => {
+            const rowDiv = document.createElement('div');
+            rowDiv.classList.add('key-row');
+            for (const letter of row) {
+                const button = document.createElement('button');
+                button.classList.add('key');
+                button.textContent = letter;
+                button.setAttribute('data-letter', letter);
+                button.addEventListener('click', () => {
+                    handleGuess(letter);
+                });
+                rowDiv.appendChild(button);
+            }
+            keyboard.appendChild(rowDiv);
+        });
+    }
+    
+    // Initial setup
+    createKeyboard();
+    fetchWords();
 });
-
-document.getElementById("pause").addEventListener("click", () => {
-  if (!iniciado) return;
-
-  pausado = !pausado;
-  if (pausado) {
-    document.getElementById("pause").textContent = "Reanudar";
-    deshabilitarTeclado();
-  } else {
-    document.getElementById("pause").textContent = "Pausar";
-    habilitarTeclado();
-  }
-});
-
-// BOTÓN DE PISTAS
-document.getElementById("showHint").addEventListener("click", () => {
-  if (pistaIndex < pistas[palabra].length) {
-    document.getElementById("hint").innerHTML += `<p>${pistas[palabra][pistaIndex]}</p>`;
-    pistaIndex++;
-  } else {
-    document.getElementById("hint").innerHTML += `<p>No hay más pistas disponibles.</p>`;
-  }
-});
-
-// iniciar automáticamente con la primera palabra
-iniciarJuego();

@@ -3,8 +3,11 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/C:/Users/estua/OneDrive/Documentos/NetBeansProjects/Ahorca2024203/web/WEB-INF/glassfish-web.xml</file>
-            <file>file:/C:/Users/estua/OneDrive/Documentos/NetBeansProjects/Ahorca2024203/web/Index.jsp</file>
+            <file>file:/C:/Users/estua/OneDrive/Documentos/NetBeansProjects/Ahorca2024203/src/java/Controlador/Controlador.java</file>
+            <file>file:/C:/Users/estua/OneDrive/Documentos/NetBeansProjects/Ahorca2024203/src/java/Controlador/Validar.java</file>
+            <file>file:/C:/Users/estua/OneDrive/Documentos/NetBeansProjects/Ahorca2024203/web/Index/Ahorcado.jsp</file>
+            <file>file:/C:/Users/estua/OneDrive/Documentos/NetBeansProjects/Ahorca2024203/web/Scripts/ahorcado.js</file>
+            <file>file:/C:/Users/estua/OneDrive/Documentos/NetBeansProjects/Ahorca2024203/src/java/modelo/PalabrasDAO.java</file>
         </group>
     </open-files>
 </project-private>
